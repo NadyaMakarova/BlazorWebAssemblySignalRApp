@@ -1,0 +1,119 @@
+﻿@page "/signals"
+@using BlazorWebAssemblySignalRApp.Shared
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.SignalR.Client
+
+<PageTitle>Сигнал</PageTitle>
+
+<h1>@Title</h1>
+
+<div class="container">
+	<div class="row">
+		<div class="col">Тип:</div>
+		<div class="col"><input @bind-value="@Type" size="70" /></div>
+	</div>
+	<div class="row">
+		@*<div class="w-100"></div>*@
+		<div class="col">Значение:</div>
+		<div class="col"><input @bind-value="@Value" size="70" /></div>
+	</div>
+	<div class="row">
+		@*<div class="w-100"></div>*@
+		<div class="col">Качество:</div>
+		<div class="col"><input @bind-value="@Quality" size="70" /></div>
+	</div>
+	<div class="row">
+		@*<div class="w-100"></div>*@
+		<div class="col">Дата:</div>
+		<div class="col"><input @bind-value="@Date" size="70" /></div>
+	</div>
+	<div class="row">
+		@*<div class="w-100"></div>*@
+		<div class="col">Отметка времени:</div>
+		<div class="col"><input @bind-value="@Time" size="70" /></div>
+	</div>
+	<div class="row">
+		@*<div class="w-100"></div>*@
+		<div class="col">Описание:</div>
+		<div class="col"><input @bind-value="@Description" size="70" /></div>
+	</div>
+</div>
+<div class="page">
+	<button class="btn btn-primary" @onclick="Save">Сохранить</button>
+	<button class="btn btn-primary" @onclick="Cancel">Отменить</button>
+</div>
+
+@code {
+	public static void SelectSignal(Signal? signal)
+	{
+		SelectedSignal = signal;
+		if (SelectedSignal != null)
+		{
+			Title = "Сигнал " + SelectedSignal.Id;
+			Type = SelectedSignal.Type;
+			Value = SelectedSignal.Value;
+			Quality = SelectedSignal.Quality;
+			Date = SelectedSignal.Date.ToShortDateString();
+			Time = SelectedSignal.Time;
+			Description = SelectedSignal.Description;
+		}
+		Sync();
+	}
+
+	private static string? Title { get; set; } = "Сигнал не выбран";
+
+	private static HubConnection? hubConnectionSync;
+
+	protected override async Task OnInitializedAsync()
+	{
+		hubConnectionSync = new HubConnectionBuilder()
+		.WithUrl(Navigation.ToAbsoluteUri("/synchub"))
+		.Build();
+		hubConnectionSync.On<bool>("ReceiveSync", (sync) =>
+		{
+			if (sync)
+				StateHasChanged();
+		});
+		await hubConnectionSync.StartAsync();
+	}
+
+	public static void Save()
+	{
+
+	}
+
+	public static void Cancel()
+	{
+		if (SelectedSignal != null)
+		{
+			Type = SelectedSignal.Type;
+			Value = SelectedSignal.Value;
+			Quality = SelectedSignal.Quality;
+			Date = SelectedSignal.Date.ToShortDateString();
+			Time = SelectedSignal.Time;
+			Description = SelectedSignal.Description;
+		}
+	}
+
+	public static Signal? SelectedSignal { get; set; }
+
+	public static string? Date { get; set; }
+
+	public static TimeSpan Time { get; set; }
+
+	public static string? Type { get; set; }
+
+	public static string? Description { get; set; }
+
+	public static double Value { get; set; }
+
+	public static string? Quality { get; set; }
+
+	public static async void Sync()
+	{
+		if (hubConnectionSync is not null)
+		{
+			await hubConnectionSync.SendAsync("SendSync", true);
+		}
+	}
+}

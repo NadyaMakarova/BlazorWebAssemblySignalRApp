@@ -1,0 +1,71 @@
+﻿@using BlazorWebAssemblySignalRApp.Client.Pages
+@using BlazorWebAssemblySignalRApp.Shared
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.SignalR.Client
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+	<nav class="btn-group">
+		@*<button class="btn px-3" disabled="@(!IsDisabled)">
+			<NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+				<span aria-hidden="true"></span> Отправка
+			</NavLink>
+		</button>*@
+		<button class="btn px-3" disabled="@(!IsDisabled)">
+			<NavLink class="nav-link" href="">
+				<span aria-hidden="true"></span> Свойства
+			</NavLink>
+		</button>
+		<button class="btn px-3" disabled="@(!IsDisabled)">
+			<NavLink class="nav-link" href="signals">
+				<span aria-hidden="true"></span> Сигналы
+			</NavLink>
+		</button>
+		<button class="btn px-3" disabled="@(!IsDisabled)">
+			<NavLink class="nav-link" href="formulas">
+				<span aria-hidden="true"></span> Формулы
+			</NavLink>
+		</button>
+		<button class="btn px-3" disabled="@(!IsDisabled)">
+			<NavLink class="nav-link" href="opcae">
+				<span aria-hidden="true"></span> OPC AE
+			</NavLink>
+		</button>
+	</nav>
+</div>
+
+@code {
+	public bool IsDisabled => SelectedSignal != null;
+
+	public static Signal? SelectedSignal { get; set; }
+
+	private bool collapseNavMenu = true;
+
+	private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+	private void ToggleNavMenu()
+	{
+		collapseNavMenu = !collapseNavMenu;
+	}
+
+	private static HubConnection? hubConnectionSync;
+
+	protected override async Task OnInitializedAsync()
+	{
+		hubConnectionSync = new HubConnectionBuilder()
+		.WithUrl(Navigation.ToAbsoluteUri("/synchub"))
+		.Build();
+		hubConnectionSync.On<bool>("ReceiveSync", (sync) =>
+		{
+			if (sync)
+				StateHasChanged();
+		});
+		await hubConnectionSync.StartAsync();
+	}
+
+	public static async void Sync()
+	{
+		if (hubConnectionSync is not null)
+		{
+			await hubConnectionSync.SendAsync("SendSync", true);
+		}
+	}
+}

@@ -1,0 +1,74 @@
+﻿@page "/tabledata"
+@using BlazorWebAssemblySignalRApp.Shared
+@using BlazorWebAssemblySignalRApp.Client.Shared
+@inject HttpClient Http
+
+<PageTitle>Сигналы</PageTitle>
+
+<h1>Сигналы</h1>
+<div class="page">
+	<button @onclick="Add">Добавить</button>
+	<button @onclick="Delete">Удалить</button>
+</div>
+@if (signals == null)
+{
+	<p><em>Данные не прогружены</em></p>
+}
+else
+{
+	<table class="table table-hover table-bordered">
+		<thead>
+			<tr>
+				<th>Id</th>
+				<th>Date</th>
+				<th>Time</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var signal in signals)
+			{
+				<tr @onclick="@(() => ChooseSignal(@signal))">
+					<td>@signal.Id</td>
+					<td>@signal.Date.ToShortDateString()</td>
+					<td>@signal.Time</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+@code {
+	private Signal[]? signals;
+
+	public static Signal? SelectedSignal { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		signals = await Http.GetFromJsonAsync<Signal[]>("Signals");
+	}
+
+	public static void ChooseSignal(Signal? signal)
+	{
+		if (signal != null)
+		{
+			SelectedSignal = signal;
+			NavMenu.SelectedSignal = signal;
+			Index.Sync();
+			NavMenu.Sync();
+			Signals.SelectSignal(SelectedSignal);
+			Properties.SelectSignal(SelectedSignal);
+			OPCAE.SelectSignal(SelectedSignal);
+			Formulas.SelectSignal(SelectedSignal);
+		}
+	}
+
+	public static void Add()
+	{
+
+	}
+
+	public static void Delete()
+	{
+
+	}
+}

@@ -1,0 +1,124 @@
+﻿@page "/formulas"
+@using BlazorWebAssemblySignalRApp.Shared
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.SignalR.Client
+
+<PageTitle>Формулы</PageTitle>
+
+<h1>@Title</h1>
+
+<div class="form-group">
+	Формула по назначению
+</div>
+<div class="border border-secondary">
+	<label>Выполняется при старте и при изменении любого из аргументов</label>
+	<button @onclick="Check">Проверить</button>
+	<div class="form-group">
+		<input @bind-value="@Formula" size="100" height="40" width="40" />
+	</div>
+</div>
+<div class="form-group">
+	Процедура по изменению
+</div>
+<div class="border border-secondary">
+	<div class="form-check-inline">
+		<input class="form-check-input" type="checkbox" value="">
+		<label class="form-check-label" for="flexCheckDefault">
+			При старте
+		</label>
+	</div>
+	<div class="form-check-inline">
+		<input class="form-check-input" type="checkbox" value="">
+		<label class="form-check-label" for="flexCheckDefault">
+			Только при изменении
+		</label>
+	</div>
+	<div class="form-check-inline">
+		<input class="form-check-input" type="checkbox" value="">
+		<label class="form-check-label" for="flexCheckDefault">
+			При любом обновлении
+		</label>
+	</div>
+	<button @onclick="Check">Проверить</button>
+	<div class="form-group">
+		<input @bind-value="@Procedure" size="100" height="40" width="40" />
+	</div>
+</div>
+<div class="form-group">
+	Сообщения об ошибках
+</div>
+<div class="border border-secondary">
+	<div class="form-group">
+		<input @bind-value="@Error" size="100" height="40" width="40" />
+	</div>
+</div>
+<div class="page">
+	<button class="btn btn-primary" @onclick="Save">Сохранить</button>
+	<button class="btn btn-primary" @onclick="Cancel">Отменить</button>
+</div>
+
+@code {
+	public static void SelectSignal(Signal? signal)
+	{
+		SelectedSignal = signal;
+		if (SelectedSignal != null)
+		{
+			Title = "Формулы сигнала " + SelectedSignal.Id;
+			Procedure = SelectedSignal.Procedure;
+			Formula = SelectedSignal.Formula;
+		}
+		Sync();
+	}
+
+	public static Signal? SelectedSignal { get; set; }
+
+	private static string? Title { get; set; } = "Сигнал не выбран";
+
+	private static HubConnection? hubConnectionSync;
+
+	protected override async Task OnInitializedAsync()
+	{
+		hubConnectionSync = new HubConnectionBuilder()
+		.WithUrl(Navigation.ToAbsoluteUri("/synchub"))
+		.Build();
+		hubConnectionSync.On<bool>("ReceiveSync", (sync) =>
+		{
+			if (sync)
+				StateHasChanged();
+		});
+		await hubConnectionSync.StartAsync();
+	}
+
+	public static void Save()
+	{
+
+	}
+
+	public void Check()
+	{
+
+	}
+
+	public static void Cancel()
+	{
+		if (SelectedSignal != null)
+		{
+			Formula = SelectedSignal.Formula;
+			Procedure = SelectedSignal.Procedure;
+		}
+	}
+
+	public static string? Error { get; set; }
+
+	public static string? Formula { get; set; }
+
+	public static string? Procedure { get; set; }
+
+	public static async void Sync()
+	{
+		if (hubConnectionSync is not null)
+		{
+			await hubConnectionSync.SendAsync("SendSync", true);
+		}
+	}
+}

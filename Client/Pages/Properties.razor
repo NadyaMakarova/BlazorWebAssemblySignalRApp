@@ -1,0 +1,116 @@
+﻿@page "/"
+@using BlazorWebAssemblySignalRApp.Shared
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.SignalR.Client
+@inject HttpClient Http
+
+<PageTitle>Свойства</PageTitle>
+
+<h1>@Title</h1>
+<div class="page">
+	<button @onclick="Add">Добавить</button>
+	<button @onclick="Delete">Удалить</button>
+</div>
+@if (properties == null)
+{
+	<p><em> </em></p>
+}
+else
+{
+	<table class="table table-hover table-bordered">
+		<thead>
+			<tr>
+				<th>Id</th>
+				<th>Короткое название</th>
+				<th>Описание</th>
+				<th>Номер</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var signal in properties)
+			{
+				<tr>
+					<td>@signal.Id</td>
+					<td><input @bind-value="@signal.ShortName" width="20" /></td>
+					<td>
+						<input @bind-value="@signal.Description" />
+					</td>
+					<td><input @bind-value="@signal.Number" /></td>
+				</tr>
+			}
+		</tbody>
+	</table>
+	<div class="page">
+		<button class="btn btn-primary" @onclick="Save">Сохранить</button>
+		<button class="btn btn-primary" @onclick="Cancel">Отменить</button>
+	</div>
+}
+
+@code {
+	private static string? Title { get; set; } = "Сигнал не выбран";
+
+	private static HubConnection? hubConnectionSync;
+
+	private static Property[]? allProperties;
+
+	private static Property[]? properties;
+
+	public static Signal? SelectedSignal { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		allProperties = await Http.GetFromJsonAsync<Property[]>("Properties");
+		if (SelectedSignal != null)
+			properties = allProperties?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+		hubConnectionSync = new HubConnectionBuilder()
+		.WithUrl(Navigation.ToAbsoluteUri("/synchub"))
+		.Build();
+		hubConnectionSync.On<bool>("ReceiveSync", (sync) =>
+		{
+			if (sync)
+				StateHasChanged();
+		});
+		await hubConnectionSync.StartAsync();
+	}
+
+	public static void SelectSignal(Signal? signal)
+	{
+		SelectedSignal = signal;
+		if (SelectedSignal != null)
+		{
+			Title = "Свойства сигнала " + SelectedSignal.Id;
+			properties = allProperties?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+		}
+		Sync();
+	}
+
+	public static void Save()
+	{
+
+	}
+
+	public static void Add()
+	{
+
+	}
+
+	public static void Delete()
+	{
+
+	}
+
+	public async void Cancel()
+	{
+		allProperties = await Http.GetFromJsonAsync<Property[]>("Properties");
+		if (SelectedSignal != null)
+			properties = allProperties?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+	}
+
+	public static async void Sync()
+	{
+		if (hubConnectionSync is not null)
+		{
+			await hubConnectionSync.SendAsync("SendSync", true);
+		}
+	}
+}

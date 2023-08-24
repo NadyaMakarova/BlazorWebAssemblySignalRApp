@@ -1,0 +1,234 @@
+﻿@page "/opcae"
+@using BlazorWebAssemblySignalRApp.Shared
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.SignalR.Client
+@inject HttpClient Http
+
+<PageTitle>Свойства</PageTitle>
+
+<h1>OPC AE</h1>
+@*<div class="page">
+	<button @onclick="Add">Добавить</button>
+	<button @onclick="Delete">Удалить</button>
+</div>*@
+<h2>Настроить</h2>
+<div class="container">
+	<div class="row">
+		<div class="col">Сообщение:</div>
+		<div class="col"><input @bind-value="@Message" size="70" /></div>
+	</div>
+	<div class="row">
+		<div class="col">Звук:</div>
+		<div class="col"><input @bind-value="@Sound" size="70" /></div>
+	</div>
+</div>
+@if (bitConditions == null)
+{
+	<p><em> </em></p>
+}
+else
+{
+	<h2>Битовые условия</h2>
+	<table class="table table-hover table-bordered">
+		<thead>
+			<tr>
+				<th>Id</th>
+				<th>Разрешить</th>
+				<th>Сообщение</th>
+				<th>Звук</th>
+				<th>Важность</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var condition in bitConditions)
+			{
+				<tr>
+					<td>@condition.Id</td>
+					<td>@condition.Allow</td>
+					<td><input @bind-value="@condition.Message" width="20" /></td>
+					<td>
+						<input @bind-value="@condition.Sound" />
+					</td>
+					<td><input @bind-value="@condition.Importance" /></td>
+				</tr>
+			}
+		</tbody>
+	</table>
+	<div class="page">
+		<button class="btn btn-primary" @onclick="Save">Сохранить</button>
+		<button class="btn btn-primary" @onclick="Cancel">Отменить</button>
+	</div>
+}
+@if (deviationConditions == null)
+{
+	<p><em> </em></p>
+}
+else
+{
+	<h2>Предел отклонения</h2>
+	<table class="table table-hover table-bordered">
+		<thead>
+			<tr>
+				<th>Id</th>
+				<th>Разрешить</th>
+				<th>Предел</th>
+				<th>Сообщение</th>
+				<th>Звук</th>
+				<th>Важность</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var condition in deviationConditions)
+			{
+				<tr>
+					<td>@condition.Id</td>
+					<td>@condition.Allow</td>
+					<td><input @bind-value="@condition.Limit" width="20" /></td>
+					<td><input @bind-value="@condition.Message" width="20" /></td>
+					<td>
+						<input @bind-value="@condition.Sound" />
+					</td>
+					<td><input @bind-value="@condition.Importance" /></td>
+				</tr>
+			}
+		</tbody>
+	</table>
+	<div class="page">
+		<button class="btn btn-primary" @onclick="Save">Сохранить</button>
+		<button class="btn btn-primary" @onclick="Cancel">Отменить</button>
+	</div>
+}
+@if (limitConditions == null)
+{
+	<p><em> </em></p>
+}
+else
+{
+	<h2>Условия по пределам</h2>
+	<table class="table table-hover table-bordered">
+		<thead>
+			<tr>
+				<th>Id</th>
+				<th>Разрешить</th>
+				<th>Предел</th>
+				<th>Сообщение</th>
+				<th>Звук</th>
+				<th>Важность</th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var condition in limitConditions)
+			{
+				<tr>
+					<td>@condition.Id</td>
+					<td>@condition.Allow</td>
+					<td><input @bind-value="@condition.Limit" width="20" /></td>
+					<td><input @bind-value="@condition.Message" width="20" /></td>
+					<td>
+						<input @bind-value="@condition.Sound" />
+					</td>
+					<td><input @bind-value="@condition.Importance" /></td>
+				</tr>
+			}
+		</tbody>
+	</table>
+	<div class="page">
+		<button class="btn btn-primary" @onclick="Save">Сохранить</button>
+		<button class="btn btn-primary" @onclick="Cancel">Отменить</button>
+	</div>
+}
+
+
+@code {
+	public static string Message { get; set; }
+
+	public static int? Sound { get; set; }
+
+	private static HubConnection? hubConnectionSync;
+
+	private static BitCondition[]? allBitConditions;
+
+	private static LimitCondition[]? allLimitConditions;
+
+	private static DeviationCondition[]? allDeviationConditions;
+
+	private static DeviationCondition[]? deviationConditions;
+
+	private static BitCondition[]? bitConditions;
+
+	private static LimitCondition[]? limitConditions;
+
+	public static Signal? SelectedSignal { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		allBitConditions = await Http.GetFromJsonAsync<BitCondition[]>("BitConditions");
+		allLimitConditions = await Http.GetFromJsonAsync<LimitCondition[]>("LimitConditions");
+		allDeviationConditions = await Http.GetFromJsonAsync<DeviationCondition[]>("DeviationConditions");
+		if (SelectedSignal != null)
+		{
+			bitConditions = allBitConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			limitConditions = allLimitConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			deviationConditions = allDeviationConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+		}
+		hubConnectionSync = new HubConnectionBuilder()
+		.WithUrl(Navigation.ToAbsoluteUri("/synchub"))
+		.Build();
+		hubConnectionSync.On<bool>("ReceiveSync", (sync) =>
+		{
+			if (sync)
+				StateHasChanged();
+		});
+		await hubConnectionSync.StartAsync();
+	}
+
+	public static void SelectSignal(Signal? signal)
+	{
+		SelectedSignal = signal;
+		if (SelectedSignal != null)
+		{
+			bitConditions = allBitConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			limitConditions = allLimitConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			deviationConditions = allDeviationConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			Message = SelectedSignal.Message;
+			Sound = SelectedSignal.Sound;
+		}
+		Sync();
+	}
+
+	public static void Save()
+	{
+
+	}
+
+	public static void Add()
+	{
+
+	}
+
+	public static void Delete()
+	{
+
+	}
+
+	public async void Cancel()
+	{
+		allBitConditions = await Http.GetFromJsonAsync<BitCondition[]>("BitConditions");
+		if (SelectedSignal != null)
+		{
+			bitConditions = allBitConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			limitConditions = allLimitConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			deviationConditions = allDeviationConditions?.Where(o => o.IdSignal == SelectedSignal.Id).ToArray();
+			Message = SelectedSignal.Message;
+			Sound = SelectedSignal.Sound;
+		}
+	}
+
+	public static async void Sync()
+	{
+		if (hubConnectionSync is not null)
+		{
+			await hubConnectionSync.SendAsync("SendSync", true);
+		}
+	}
+}
